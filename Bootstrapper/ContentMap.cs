@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ICSharpCode.SharpZipLib.Zip;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -33,7 +34,6 @@ namespace StellaBootstrapper
 
             new(@"shaders.zip", @"shaders"),
             new(@"ssl.zip", @"ssl"),
-            new(@"redist.zip", @""),
 
             new(@"WebView2.zip", @""),
             new(@"WebView2RuntimeInstaller.zip", @"WebView2RuntimeInstaller"),
@@ -43,8 +43,29 @@ namespace StellaBootstrapper
         {
             foreach (ContentMap map in Map)
             {
-                var zip = $"{from}/{map.OriginalZip}";
-                ZipFileEx.ExtractToDirectory(zip, $"{to}/{map.OutputDirectory}");
+                string zip = $"{from}/{map.OriginalZip}";
+                using var fs = File.OpenRead(zip);
+                using var zipFile = new ICSharpCode.SharpZipLib.Zip.ZipFile(fs);
+
+                foreach (ZipEntry entry in zipFile)
+                {
+                    if (!entry.IsFile)
+                    {
+                        continue;
+                    }
+
+                    string entryFileName = entry.Name;
+                    string fullPath = Path.Combine($"{to}/{map.OutputDirectory}", entryFileName);
+
+                    Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+                    using var zipStream = zipFile.GetInputStream(entry);
+                    using var streamWriter = File.Create(fullPath);
+
+                    zipStream.CopyTo(streamWriter);
+                }
+                fs.Close();
+                zipFile.Close();
                 File.Delete(zip);
             }
         }

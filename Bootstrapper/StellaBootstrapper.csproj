@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="halftone.jpg" />
     <None Remove="Presets\Fnaf\FFAF-Regular.ttf" />
     <None Remove="Presets\Fnaf\fnaf3-start.mp3" />
     <None Remove="Presets\Fnaf\manifest.json" />
@@ -38,7 +39,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Roblox\Roblox.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="halftone.jpg" />
   </ItemGroup>
 
 </Project>

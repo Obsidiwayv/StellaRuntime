@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace StellaBootstrapper
 {
@@ -39,12 +40,20 @@ namespace StellaBootstrapper
 
         private bool CanDownload = true;
 
+        private const string AppSettings =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n" +
+            "<Settings>\r\n" +
+            "	<ContentFolder>content</ContentFolder>\r\n" +
+            "	<BaseUrl>http://www.roblox.com</BaseUrl>\r\n" +
+            "</Settings>\r\n";
+
         public BootStrapperWindow(BootstrapPreset preset, string robloxDir)
         {
             InitializeComponent();
 
             media.Open(preset.Sound);
             media.Play();
+            media.Close();
 
             BackgroundImage.Source = new BitmapImage(preset.BackgroundImage);
             // Fix at some point 
@@ -125,18 +134,29 @@ namespace StellaBootstrapper
                 }
             }
             File.WriteAllText(versionFile, manifest!.ClientVersionUpload);
-            Dispatcher.Invoke(() =>
+            File.WriteAllText($"{RobloxDir}/AppSettings.xml", AppSettings);
+
+            await Dispatcher.InvokeAsync(() => 
             {
                 Progress.IsIndeterminate = true;
                 StatusText.Content = "Extracting";
-                ContentPipeline.ExtractZipFiles(directory, RobloxDir!);
+            }, DispatcherPriority.Render);
 
-                Progress.Visibility = Visibility.Hidden;
-                StatusText.Content = "Done!, Launching";
-            });
             await Task.Run(() =>
             {
-                Process proc = StartClient();
+                ContentPipeline.ExtractZipFiles(directory, RobloxDir!);
+            });
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Progress.Visibility = Visibility.Hidden;
+                StatusText.Content = "Done!, Launching";
+                Thread.Sleep(2);
+                Hide();
+            });
+            Process proc = StartClient();
+            await Task.Run(() =>
+            {
                 proc.WaitForExit();
             });
         }
