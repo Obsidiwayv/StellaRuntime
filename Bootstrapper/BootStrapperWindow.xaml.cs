@@ -1,6 +1,11 @@
-﻿using System;
+﻿using Roblox;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -16,8 +21,10 @@ namespace StellaBootstrapper
     {
         public Uri Sound { get; init; }
         public Uri BackgroundImage { get; init; }
-        public Uri FontFace { get; init; }
+        //public Uri FontFace { get; init; }
     }
+
+    public delegate void ProgressTriggerEvent(int current);
 
     /// <summary>
     /// Interaction logic for BootStrapperWindow.xaml
@@ -26,25 +33,118 @@ namespace StellaBootstrapper
     {
         private MediaPlayer media = new();
 
-        public BootStrapperWindow(BootstrapPreset preset)
+        private string? RobloxDir;
+
+        public event ProgressTriggerEvent ProgressTrigger;
+
+        private bool CanDownload = true;
+
+        public BootStrapperWindow(BootstrapPreset preset, string robloxDir)
         {
             InitializeComponent();
 
-            BackgroundImage.Source = new BitmapImage(preset.BackgroundImage);
-            StatusText.FontFamily = new FontFamily(preset.FontFace, "DefaultFont");
-
             media.Open(preset.Sound);
             media.Play();
+
+            BackgroundImage.Source = new BitmapImage(preset.BackgroundImage);
+            // Fix at some point 
+            //Dispatcher.Invoke(() =>
+            //{
+            //    StatusText.FontFamily = new FontFamily(preset.FontFace, "./#");
+            //});
+
+            StatusText.Content = "Updating";
+
+            RobloxDir = robloxDir;
+
+            StatusText.UpdateLayout();
+            StatusText.InvalidateVisual();
+
+            Downloader.AddUserAgent();
         }
 
-        public void UpdateBootstrapStatus(string stat)
+        public Process StartClient() 
         {
-            StatusText.Content = stat;
+            if (RobloxDir == null)
+            {
+                MessageBox.Show("Invalid roblox directory", "Runtime Error");
+            }
+            return Process.Start($"{RobloxDir}/RobloxPlayerBeta.exe");
         }
 
-        public void DownloadClient(string extractionDirectory)
+        public async Task DownloadClient(string directory)
         {
+            var manifest = await Downloader.GetVersionBuild();
+            var versionFile = $"{directory}/VERSION";
+            if (manifest == null)
+            {
+                MessageBox.Show("Unable to download Roblox: Manifest is null");
+                Close();
+            }
+            if (File.Exists(versionFile))
+            {
+                var curVersion = File.ReadAllText(versionFile);
+                if (curVersion != manifest!.ClientVersionUpload)
+                {
+                    // Just return for now
+                    return;
+                }
+            }
+            foreach (var zip in await Downloader.GetArchiveManifest(manifest!.ClientVersionUpload))
+            {
+                if (!CanDownload)
+                {
+                    break;
+                }
+            //    File.WriteAllText($"{Directory.GetCurrentDirectory()}/DEBUG", CDN.GetPackage(manifest!.ClientVersionUpload, zip));
+                using var res = await Downloader.client.GetAsync(CDN.GetPackage(manifest!.ClientVersionUpload, zip));
+                res.EnsureSuccessStatusCode();
 
+                var totalBytes = res.Content.Headers.ContentLength ?? -1L;
+                var canReport = totalBytes != -1 && Progress != null;
+
+                using var stream = await res.Content.ReadAsStreamAsync();
+                using var fileStream = File.Create($"{directory}/{zip}");
+
+                var buffer = new byte[8192];
+                long total = 0;
+                int read;
+
+                while ((read = await stream.ReadAsync(buffer)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                    total += read;
+                    if (canReport)
+                    {
+                        double prog = (double)total / totalBytes * 100;
+                        Dispatcher.Invoke(() =>
+                        {
+                            Progress!.Value = prog;
+                        });
+                    }
+                }
+            }
+            File.WriteAllText(versionFile, manifest!.ClientVersionUpload);
+            Dispatcher.Invoke(() =>
+            {
+                Progress.IsIndeterminate = true;
+                StatusText.Content = "Extracting";
+                ContentPipeline.ExtractZipFiles(directory, RobloxDir!);
+
+                Progress.Visibility = Visibility.Hidden;
+                StatusText.Content = "Done!, Launching";
+            });
+            await Task.Run(() =>
+            {
+                Process proc = StartClient();
+                proc.WaitForExit();
+            });
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+            CanDownload = false;
         }
     }
 }

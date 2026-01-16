@@ -8,26 +8,37 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Presets\Fnaf\FFAF-Regular.ttf" />
+    <None Remove="Presets\Fnaf\fnaf3-start.mp3" />
+    <None Remove="Presets\Fnaf\manifest.json" />
+    <None Remove="Presets\Fnaf\Springtrap.png" />
+    <None Remove="Presets\PixelatedEleganceRegular-ovyAA.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Presets\Fnaf\FFAF-Regular.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Presets\Fnaf\fnaf3-start.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Presets\Fnaf\manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Presets\Fnaf\Springtrap.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Presets\PixelatedEleganceRegular-ovyAA.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="BootstrapperPresets.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Roblox\Roblox.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Presets\Fnaf\FFAF-Regular.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Presets\Fnaf\fnaf3-start.mp3">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Presets\Fnaf\manifest.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Presets\Fnaf\Springtrap.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

@@ -37,7 +37,7 @@ namespace StellaBootstrapper
                 presets.Add(new()
                 {
                     BackgroundImage = new Uri($"{presetDir}/{json.BackgroundImage}"),
-                    FontFace = new Uri($"{presetDir}/{json.Font}"),
+                    //FontFace = new Uri($"{presetDir}/{json.Font}"),
                     Sound = new Uri($"{presetDir}/{json.Sound}")
                 });
             }

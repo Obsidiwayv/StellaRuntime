@@ -1,6 +1,7 @@
-﻿using Roblox.JSON;
+﻿using Roblox;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -9,14 +10,19 @@ namespace StellaBootstrapper
 {
     internal class Downloader
     {
-        private static readonly HttpClient client = new();
+        public static readonly HttpClient client = new();
+
+        public static void AddUserAgent()
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", "RobloxPlayer/Win32");
+        }
 
         public static async Task<WindowsPlayerManifest?> GetVersionBuild() 
         {
-            return await GetManifest<WindowsPlayerManifest?>(RobloxUrls.Binary);
+            return await GetManifest<WindowsPlayerManifest?>(CDN.WindowsBinaryManifest);
         }
 
-        public static async Task<List<string>> GetArchiveManifest()
+        public static async Task<List<string>> GetArchiveManifest(string version)
         {
             var builds = await GetVersionBuild();
             if (builds == null)
@@ -24,20 +30,27 @@ namespace StellaBootstrapper
                 // Return an empty array due to network error
                 return ["EMPTY"];
             }
-            var manifest = await client.GetStringAsync(RobloxUrls.GetVersionManifest(builds.ClientVersionUpload));
+            var manifest = await client.GetAsync(CDN.GetVersionManifest(version));
+            var stringManifest = await manifest.Content.ReadAsStringAsync();
+            var debug = stringManifest;
             if (manifest != null)
             {
                 var zips = new List<string>();
                 // Invalid Manifest
-                if (!manifest.StartsWith("v0"))
+                if (!stringManifest.StartsWith("v0"))
                 {
                     return ["INVALID_MANIFEST"];
                 }
-                foreach (var line in manifest.Split("\n"))
+                using StringReader reader = new(stringManifest);
+                while (true)
                 {
-                    if (line.EndsWith(".zip"))
+                    string? fileName = reader.ReadLine();
+                    
+
+                    if (string.IsNullOrEmpty(fileName)) break;
+                    if (fileName.EndsWith(".zip"))
                     {
-                        zips.Add(line);
+                        zips.Add(fileName);
                     }
                 }
                 if (zips.Count != 0)
@@ -55,8 +68,8 @@ namespace StellaBootstrapper
 
         private static async Task<T?> GetManifest<T>(string url) 
         {
-            var res = await client.GetStringAsync(url);
-            return JsonSerializer.Deserialize<T>(res);
+            var res = await client.GetAsync(url);
+            return JsonSerializer.Deserialize<T>(await res.Content.ReadAsStringAsync());
         }
     }
 }
