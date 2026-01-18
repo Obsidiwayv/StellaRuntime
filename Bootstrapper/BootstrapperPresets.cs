@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RivenSDK.Core;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -9,36 +10,36 @@ namespace StellaBootstrapper
 {
     public class PresetManifest
     {
-        [JsonPropertyName("preset")]
-        public string PresetName { get; }
+        [JsonPropertyName("presetName")]
+        public string PresetName { get; set; }
 
         [JsonPropertyName("font")]
-        public string Font { get; }
+        public string? Font { get; set; }
 
         [JsonPropertyName("background")]
-        public string BackgroundImage { get; }
+        public string BackgroundImage { get; set; }
 
         [JsonPropertyName("sound")]
-        public string Sound { get; }
+        public string? Sound { get; set; }
     }
 
-    internal class BootstrapperPresets
+    public class BootstrapperPresets
     {
         public static List<BootstrapPreset> Get()
         {
             List<BootstrapPreset> presets = [];
-            foreach (var preset in Directory.GetFiles("Presets", ".json"))
+            foreach (var preset in Directory.GetFiles(
+                $"{Directory.GetCurrentDirectory()}/Presets", "*.json", SearchOption.AllDirectories))
             {
-                var directory = Path.GetDirectoryName(preset);
                 var json = JsonSerializer.Deserialize<PresetManifest>(File.ReadAllText(preset));
 
                 if (json == null) continue;
-                var presetDir = $"{Directory.GetCurrentDirectory()}/Presets/{directory}";
                 presets.Add(new()
                 {
-                    BackgroundImage = new Uri($"{presetDir}/{json.BackgroundImage}"),
-                    //FontFace = new Uri($"{presetDir}/{json.Font}"),
-                    Sound = new Uri($"{presetDir}/{json.Sound}")
+                    BackgroundImage = new Uri($"{Directory.GetCurrentDirectory()}/Presets/{json.BackgroundImage}"),
+                    FontFace = json.Font == null ? "None" : $"Presets/{json.Font}",
+                    Sound = json.Sound == null ? "None": $"Presets/{json.Sound}",
+                    Name = json.PresetName
                 });
             }
             return presets;

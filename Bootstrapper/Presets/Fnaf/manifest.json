@@ -1,6 +1,6 @@
 {
-  "preset": "FNAF",
-  "font": "FFAF-Regular.ttf",
-  "sound": "fnaf3-start.mp3",
-  "background": "Springtrap.png"
+  "presetName": "FNAF",
+  "font": "Fnaf/FFAF-Regular.ttf",
+  "sound": "Fnaf/fnaf3-start.mp3",
+  "background": "Fnaf/Springtrap.png"
 }

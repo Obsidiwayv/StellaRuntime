@@ -1,4 +1,5 @@
-﻿using Roblox;
+﻿using RivenSDK.Audio;
+using Roblox;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,23 +21,26 @@ namespace StellaBootstrapper
 {
     public class BootstrapPreset
     {
-        public Uri Sound { get; init; }
+        public string Name { get; init; }
+        public string Sound { get; init; }
         public Uri BackgroundImage { get; init; }
-        //public Uri FontFace { get; init; }
+        public string FontFace { get; init; }
     }
 
-    public delegate void ProgressTriggerEvent(int current);
+    public delegate void ProgressTriggerEvent(double current);
+    public delegate void ClientShutdownTriggerEvent();
 
     /// <summary>
     /// Interaction logic for BootStrapperWindow.xaml
     /// </summary>
     public partial class BootStrapperWindow : Window
     {
-        private MediaPlayer media = new();
+        private RivenFmodSystem Media = new();
 
         private string? RobloxDir;
 
         public event ProgressTriggerEvent ProgressTrigger;
+        public event ClientShutdownTriggerEvent ClientShutdownTrigger;
 
         private bool CanDownload = true;
 
@@ -51,11 +55,24 @@ namespace StellaBootstrapper
         {
             InitializeComponent();
 
-            media.Open(preset.Sound);
-            media.Play();
-            media.Close();
+            var timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+
+            timer.Tick += (_, _) =>
+            {
+                Media.UpdateSystem();
+            };
+
+            if (preset.Sound != "none")
+            {
+                Media.LoadSound("PresetSound", preset.Sound);
+                Media.PlaySound("PresetSound");
+            }
 
             BackgroundImage.Source = new BitmapImage(preset.BackgroundImage);
+            StatusText.FontFamily = new(preset.FontFace);
             // Fix at some point 
             //Dispatcher.Invoke(() =>
             //{
@@ -70,6 +87,11 @@ namespace StellaBootstrapper
             StatusText.InvalidateVisual();
 
             Downloader.AddUserAgent();
+        }
+
+        private void Timer_Tick(object? sender, EventArgs e)
+        {
+            throw new NotImplementedException();
         }
 
         public Process StartClient() 
@@ -93,11 +115,25 @@ namespace StellaBootstrapper
             if (File.Exists(versionFile))
             {
                 var curVersion = File.ReadAllText(versionFile);
-                if (curVersion != manifest!.ClientVersionUpload)
+                if (curVersion == manifest!.ClientVersionUpload)
                 {
-                    // Just return for now
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        Progress.Visibility = Visibility.Hidden;
+                        StatusText.Content = "No Updates, Launching";
+                        Hide();
+                    });
+                    Process proc = StartClient();
+                    await Task.Run(() =>
+                    {
+                        proc.WaitForExit();
+                        Dispatcher.Invoke(() => Close());
+                        Media.Quit();
+                    });
                     return;
                 }
+                // Delete Roblox Dir and reinstall
+                Directory.CreateDirectory(RobloxDir!);
             }
             foreach (var zip in await Downloader.GetArchiveManifest(manifest!.ClientVersionUpload))
             {
@@ -105,7 +141,7 @@ namespace StellaBootstrapper
                 {
                     break;
                 }
-            //    File.WriteAllText($"{Directory.GetCurrentDirectory()}/DEBUG", CDN.GetPackage(manifest!.ClientVersionUpload, zip));
+                // File.WriteAllText($"{Directory.GetCurrentDirectory()}/DEBUG", CDN.GetPackage(manifest!.ClientVersionUpload, zip));
                 using var res = await Downloader.client.GetAsync(CDN.GetPackage(manifest!.ClientVersionUpload, zip));
                 res.EnsureSuccessStatusCode();
 
@@ -129,6 +165,7 @@ namespace StellaBootstrapper
                         Dispatcher.Invoke(() =>
                         {
                             Progress!.Value = prog;
+                            ProgressTrigger.Invoke(prog);
                         });
                     }
                 }
@@ -151,13 +188,14 @@ namespace StellaBootstrapper
             {
                 Progress.Visibility = Visibility.Hidden;
                 StatusText.Content = "Done!, Launching";
-                Thread.Sleep(2);
                 Hide();
             });
-            Process proc = StartClient();
+            Process proc2 = StartClient();
             await Task.Run(() =>
             {
-                proc.WaitForExit();
+                proc2.WaitForExit();
+                Dispatcher.Invoke(() => Close());
+                Media.Quit();
             });
         }
 
